@@ -1,0 +1,16 @@
+# requirements.txt
+flask
+selenium
+webdriver_manager
+pandas
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+google-api-python-client
+Pillow
+matplotlib
+opencv-python-headless
+gunicorn
+python-dotenv
+beautifulsoup4
+flask-cors

@@ -1,0 +1,24 @@
+{
+    "magiceden": {
+        "base_url": "https://magiceden.io/collections/ethereum/",
+        "collections": [
+            {
+                "name": "Collection 1",
+                "url_suffix": "0x138a5c693279b6cd82f48d4bef563251bc15adce"
+            },
+            {
+                "name": "Collection 2",
+                "url_suffix": "0x99f419934192f8de7bf53b490d5bdb88527654bf"
+            }
+        ]
+    },
+    "opensea": {
+        "base_url": "https://opensea.io/collection/",
+        "collections": [
+            {
+                "name": "Musubi Collection",
+                "url_suffix": "musubicollection"
+            }
+        ]
+    }
+}
