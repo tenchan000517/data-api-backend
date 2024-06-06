@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data API Test</title>
+    <script>
+        async function testEndpoint() {
+            const marketplace = document.getElementById('marketplace').value;
+            const collection = document.getElementById('collection').value;
+            const urlSuffix = document.getElementById('urlSuffix').value;
+
+            // クエリパラメータを構築
+            let query = `marketplace=${marketplace}`;
+            if (collection) {
+                query += `&collection=${collection}`;
+            }
+            if (urlSuffix) {
+                query += `&urlSuffix=${urlSuffix}`;
+            }
+
+            const response = await fetch(`/scrape?${query}`);
+            if (response.ok) {
+                const data = await response.json();
+                document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+            } else {
+                document.getElementById('result').textContent = 'Error: ' + response.statusText;
+            }
+        }
+
+        function toggleInputs() {
+            const marketplace = document.getElementById('marketplace').value;
+            const collectionInput = document.getElementById('collection');
+            const urlSuffixInput = document.getElementById('urlSuffix');
+
+            if (marketplace === 'Ethereum' || marketplace === 'Polygon') {
+                collectionInput.disabled = true;
+                urlSuffixInput.disabled = false;
+            } else {
+                collectionInput.disabled = false;
+                urlSuffixInput.disabled = true;
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>Data API Test</h1>
+    <label for="marketplace">Marketplace:</label>
+    <select id="marketplace" name="marketplace" onchange="toggleInputs()">
+        <option value="MagicEdenAPI">MagicEden (API)</option>
+        <option value="MagicEdenOrdinals">MagicEden Ordinals (API)</option>
+        <option value="MagicEdenScrape">MagicEden (Scrape)</option>
+        <option value="Opensea">Opensea</option>
+        <option value="Ethereum">MagicEden (Ethereum)</option>
+        <option value="Polygon">MagicEden (Polygon)</option>
+    </select>
+    <br>
+    <label for="collection">Collection:</label>
+    <input type="text" id="collection" name="collection" placeholder="Enter Collection Identifier">
+    <br>
+    <label for="urlSuffix">URL Suffix:</label>
+    <input type="text" id="urlSuffix" name="urlSuffix" placeholder="Enter URL Suffix" disabled>
+    <br>
+    <button onclick="testEndpoint()">Test /scrape Endpoint</button>
+    <pre id="result"></pre>
+</body>
+</html>

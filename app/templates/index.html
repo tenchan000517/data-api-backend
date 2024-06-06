@@ -4,9 +4,67 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Data API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: row;
+        }
+        .container {
+            flex: 1;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        label {
+            font-weight: bold;
+            display: block;
+            margin-top: 10px;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        pre {
+            background-color: #fff;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
     <script>
         async function testEndpoint() {
-            const response = await fetch('/scrape');
+            const marketplace = document.getElementById('marketplace').value;
+            const collection = document.getElementById('collection').value;
+            const urlSuffix = document.getElementById('urlSuffix').value;
+
+            let query = `marketplace=${marketplace}`;
+            if (collection) {
+                query += `&collection=${collection}`;
+            }
+            if (urlSuffix) {
+                query += `&urlSuffix=${urlSuffix}`;
+            }
+
+            const response = await fetch(`/scrape?${query}`);
             if (response.ok) {
                 const data = await response.json();
                 document.getElementById('result').textContent = JSON.stringify(data, null, 2);
@@ -14,11 +72,110 @@
                 document.getElementById('result').textContent = 'Error: ' + response.statusText;
             }
         }
+
+        async function testTokenEndpoint() {
+            const chain = document.getElementById('chain').value;
+            const contractAddress = document.getElementById('contractAddress').value;
+            const source = document.getElementById('source').value;
+
+            let query = `chain=${chain}&contractAddress=${contractAddress}&source=${source}`;
+
+            const response = await fetch(`/token?${query}`);
+            if (response.ok) {
+                const data = await response.json();
+                document.getElementById('tokenResult').textContent = JSON.stringify(data, null, 2);
+            } else {
+                document.getElementById('tokenResult').textContent = 'Error: ' + response.statusText;
+            }
+        }
+
+        async function testPairEndpoint() {
+            const customToken = document.getElementById('customToken').value;
+            const token = document.getElementById('token').value;
+
+            let query = `token0=${customToken}&token1=${token}`;
+
+            const response = await fetch(`/pair?${query}`);
+            if (response.ok) {
+                const data = await response.json();
+                document.getElementById('pairResult').textContent = JSON.stringify(data, null, 2);
+            } else {
+                document.getElementById('pairResult').textContent = 'Error: ' + response.statusText;
+            }
+        }
+
+        function toggleInputs() {
+            const marketplace = document.getElementById('marketplace').value;
+            const collectionInput = document.getElementById('collection');
+            const urlSuffixInput = document.getElementById('urlSuffix');
+
+            if (marketplace === 'Ethereum' || marketplace === 'Polygon') {
+                collectionInput.disabled = true;
+                urlSuffixInput.disabled = false;
+            } else {
+                collectionInput.disabled = false;
+                urlSuffixInput.disabled = true;
+            }
+        }
     </script>
 </head>
 <body>
-    <h1>Data API Test</h1>
-    <button onclick="testEndpoint()">Test /scrape Endpoint</button>
-    <pre id="result"></pre>
+    <div class="container">
+        <h1>Data API Test</h1>
+        <label for="marketplace">Marketplace:</label>
+        <select id="marketplace" name="marketplace" onchange="toggleInputs()">
+            <option value="MagicEdenAPI">MagicEden (API)</option>
+            <option value="MagicEdenOrdinals">MagicEden Ordinals (API)</option>
+            <option value="MagicEdenScrape">MagicEden (Scrape)</option>
+            <option value="Opensea">Opensea</option>
+            <option value="Ethereum">MagicEden (Ethereum)</option>
+            <option value="Polygon">MagicEden (Polygon)</option>
+        </select>
+        <label for="collection">Collection:</label>
+        <input type="text" id="collection" name="collection" placeholder="Enter Collection Identifier">
+        <label for="urlSuffix">URL Suffix:</label>
+        <input type="text" id="urlSuffix" name="urlSuffix" placeholder="Enter URL Suffix" disabled>
+        <button onclick="testEndpoint()">Test /scrape Endpoint</button>
+
+        <h1>Token API Test</h1>
+        <label for="chain">Chain:</label>
+        <select id="chain" name="chain">
+            <option value="ethereum">Ethereum</option>
+            <option value="polygon">Polygon</option>
+            <option value="binance">Binance</option>
+            <option value="base">BASE</option>
+            <option value="aster">Aster</option>
+            <option value="astergkevm">AsterGKEvm</option>
+        </select>
+        <label for="contractAddress">Contract Address:</label>
+        <input type="text" id="contractAddress" name="contractAddress" placeholder="Enter Contract Address">
+        <label for="source">Source:</label>
+        <select id="source" name="source">
+            <option value="default">Default</option>
+            <option value="uniswap">Uniswap</option>
+            <option value="pancakeswap">PancakeSwap</option>
+        </select>
+        <button onclick="testTokenEndpoint()">Test /token Endpoint</button>
+
+        <h1>Pair API Test</h1>
+        <label for="customToken">Custom Token Address:</label>
+        <input type="text" id="customToken" name="customToken" placeholder="Enter Custom Token Address">
+        <label for="token">Pair with:</label>
+        <select id="token" name="token">
+            <option value="0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2">ETH</option>
+            <option value="0xdAC17F958D2ee523a2206206994597C13D831ec7">USDT</option>
+            <option value="0xA0b86991c6218B36c1d19D4a2e9Eb0cE3606eB48">USDC</option>
+            <option value="0x6B175474E89094C44Da98b954EedeAC495271d0F">DAI</option>
+            <option value="0x514910771AF9Ca656af840dff83E8264EcF986CA">LINK</option>
+            <!-- 他の主要トークンもここに追加できます -->
+        </select>
+        <button onclick="testPairEndpoint()">Test /pair Endpoint</button>
+    </div>
+    <div class="container">
+        <h1>Results</h1>
+        <pre id="result"></pre>
+        <pre id="tokenResult"></pre>
+        <pre id="pairResult"></pre>
+    </div>
 </body>
 </html>

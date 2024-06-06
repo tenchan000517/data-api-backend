@@ -1,4 +1,3 @@
-# scrape.py
 import requests
 from bs4 import BeautifulSoup
 import json
@@ -11,22 +10,20 @@ load_dotenv()
 
 # 環境変数からAPIキーを取得
 OPENSEA_API_KEY = os.getenv('OPENSEA_API_KEY')
-FINANCIE_USERNAME = os.getenv('FINANCIE_USERNAME')
-FINANCIE_PASSWORD = os.getenv('FINANCIE_PASSWORD')
 
 # ログ設定
 logging.basicConfig(level=logging.DEBUG)  # DEBUGレベルに変更
 logger = logging.getLogger(__name__)
 
+def save_html_to_file(html_content, filename):
+    with open(filename, 'w', encoding='utf-8') as file:
+        file.write(html_content)
+
 def load_config():
     with open('scraping_targets.json', 'r', encoding='utf-8') as f:
         return json.load(f)
 
-# def save_html_to_file(html_content, filename):
-#     with open(filename, 'w', encoding='utf-8') as file:
-#         file.write(html_content)
-
-def extract_data_from_script(script_content):
+def extract_data_from_script(script_content, is_polygon=False):
     try:
         json_data = json.loads(script_content)
         collection_stats = json_data["props"]["pageProps"]["initialData"]["collectionStatsAttributes"]
@@ -36,31 +33,100 @@ def extract_data_from_script(script_content):
             value = stat.get("value")
             if trait_type and value:
                 key = trait_type.lower().replace(" ", "_")
-                data[key] = value
+                if value == "---" or value == "":
+                    data[key] = None
+                else:
+                    # 通貨単位の削除と数値への変換
+                    if is_polygon and 'MATIC' in value:
+                        value = value.split(' ')[0].replace(',', '')
+                    if 'ETH' in value or 'MATIC' in value:
+                        value = value.split(' ')[0].replace(',', '')
+                    try:
+                        data[key] = float(value)
+                    except ValueError:
+                        data[key] = value
                 logger.info(f"Extracted {trait_type}: {value}")
         return data
     except Exception as e:
         logger.error(f"Failed to extract data from script: {e}")
         return None
 
-def scrape_magiceden(url):
+def scrape_magiceden(url, is_polygon=False):
     logger.info(f"Scraping MagicEden URL: {url}")
     response = requests.get(url)
     soup = BeautifulSoup(response.content, "html.parser")
 
+    
     # HTMLを保存（ページごとに保存）
-    # page_name = url.split('/')[-1]
-    # save_html_to_file(soup.prettify(), f'scraped_page_magiceden_{page_name}.html')
+    page_name = url.split('/')[-1]
+    save_html_to_file(soup.prettify(), f'scraped_page_magiceden_{page_name}.html')
+
 
     # <script id="__NEXT_DATA__">タグを取得
     script_tag = soup.find("script", {"id": "__NEXT_DATA__"})
     if script_tag:
         script_content = script_tag.string
         logger.debug(f"Script content: {script_content[:500]}")  # ログに一部の内容を出力
-        return extract_data_from_script(script_content)
+        return extract_data_from_script(script_content, is_polygon)
     else:
         logger.error("Script tag with id '__NEXT_DATA__' not found")
         return None
+
+def get_magiceden_collection_stats(symbol):
+    url = f"https://api-mainnet.magiceden.dev/v2/collections/{symbol}/stats"
+    logger.info(f"Fetching collection stats from MagicEden API URL: {url}")
+    response = requests.get(url)
+    
+    if response.status_code != 200:
+        logger.error(f"Failed to fetch collection stats from MagicEden API: {response.status_code} {response.text}")
+        return None
+    
+    data = response.json()
+    logger.debug(f"Collection stats: {json.dumps(data, indent=2)}")  # 全体の内容を出力
+    
+    # 必要なデータを抽出してSOLに変換
+    extracted_data = {
+        "symbol": data.get("symbol", ""),
+        "listedCount": data.get("listedCount", 0),
+        "floorPrice": solana_conversion(data.get("floorPrice", 0)),
+        "volumeAll": solana_conversion(data.get("volumeAll", 0)),
+        "avgPrice24hr": solana_conversion(data.get("avgPrice24hr", 0)),
+        "volume24hr": solana_conversion(data.get("volume24hr", 0))
+    }
+    
+    # 取得したデータをログに出力
+    logger.info(f"MagicEden Data for {symbol}: {extracted_data}")
+    
+    return extracted_data
+
+def get_magiceden_ordinals_stats(symbol):
+    url = f"https://api-mainnet.magiceden.dev/v2/ord/btc/stat?collectionSymbol={symbol}"
+    logger.info(f"Fetching Ordinals stats from MagicEden API URL: {url}")
+    response = requests.get(url)
+    
+    if response.status_code != 200:
+        logger.error(f"Failed to fetch Ordinals stats from MagicEden API: {response.status_code} {response.text}")
+        return None
+    
+    data = response.json()
+    logger.debug(f"Ordinals stats: {json.dumps(data, indent=2)}")  # 全体の内容を出力
+    
+    # 必要なデータを抽出
+    extracted_data = {
+        "floorPrice": data.get("floorPrice", ""),
+        "inscriptionNumberMin": data.get("inscriptionNumberMin", ""),
+        "inscriptionNumberMax": data.get("inscriptionNumberMax", ""),
+        "owners": data.get("owners", ""),
+        "pendingTransactions": data.get("pendingTransactions", ""),
+        "supply": data.get("supply", ""),
+        "totalListed": data.get("totalListed", ""),
+        "totalVolume": data.get("totalVolume", "")
+    }
+    
+    # 取得したデータをログに出力
+    logger.info(f"MagicEden Ordinals Data for {symbol}: {extracted_data}")
+    
+    return extracted_data
 
 def get_opensea_collection_stats(collection_slug):
     url = f"https://api.opensea.io/api/v2/collections/{collection_slug}/stats"
@@ -73,22 +139,49 @@ def get_opensea_collection_stats(collection_slug):
         return None
     
     data = response.json()
-    logger.debug(f"Collection stats: {json.dumps(data, indent=2)[:500]}")  # ログに一部の内容を出力
+    logger.debug(f"Full API response: {json.dumps(data, indent=2)}")  # ログに全体の内容を出力
     
     # 必要なデータを抽出
+    total_stats = data.get("total", {})
+    intervals = data.get("intervals", [])
+
+    if not total_stats or not intervals:
+        logger.error(f"Missing expected keys in response: {data}")
+        return None
+    
     extracted_data = {
-        "floor_price": data["total"]["floor_price"],
-        "total_volume": data["total"]["volume"],
-        "total_supply": data["total"]["sales"],
-        "num_owners": data["total"]["num_owners"],
-        "average_price": data["total"]["average_price"],
-        "market_cap": data["total"]["market_cap"]
+        "floor_price": total_stats.get("floor_price", 0),
+        "floor_price_symbol": total_stats.get("floor_price_symbol", ""),
+        "total_volume": total_stats.get("volume", 0),
+        "total_sales": total_stats.get("sales", 0),
+        "num_owners": total_stats.get("num_owners", 0),
+        "average_price": total_stats.get("average_price", 0),
+        "market_cap": total_stats.get("market_cap", 0),
+        "one_day_volume": intervals[0].get("volume", 0) if len(intervals) > 0 else 0,
+        "one_day_volume_diff": intervals[0].get("volume_diff", 0) if len(intervals) > 0 else 0,
+        "one_day_volume_change": intervals[0].get("volume_change", 0) if len(intervals) > 0 else 0,
+        "one_day_sales": intervals[0].get("sales", 0) if len(intervals) > 0 else 0,
+        "one_day_sales_diff": intervals[0].get("sales_diff", 0) if len(intervals) > 0 else 0,
+        "one_day_average_price": intervals[0].get("average_price", 0) if len(intervals) > 0 else 0,
+        "seven_day_volume": intervals[1].get("volume", 0) if len(intervals) > 1 else 0,
+        "seven_day_volume_diff": intervals[1].get("volume_diff", 0) if len(intervals) > 1 else 0,
+        "seven_day_volume_change": intervals[1].get("volume_change", 0) if len(intervals) > 1 else 0,
+        "seven_day_sales": intervals[1].get("sales", 0) if len(intervals) > 1 else 0,
+        "seven_day_sales_diff": intervals[1].get("sales_diff", 0) if len(intervals) > 1 else 0,
+        "seven_day_average_price": intervals[1].get("average_price", 0) if len(intervals) > 1 else 0,
+        "thirty_day_volume": intervals[2].get("volume", 0) if len(intervals) > 2 else 0,
+        "thirty_day_volume_diff": intervals[2].get("volume_diff", 0) if len(intervals) > 2 else 0,
+        "thirty_day_volume_change": intervals[2].get("volume_change", 0) if len(intervals) > 2 else 0,
+        "thirty_day_sales": intervals[2].get("sales", 0) if len(intervals) > 2 else 0,
+        "thirty_day_sales_diff": intervals[2].get("sales_diff", 0) if len(intervals) > 2 else 0,
+        "thirty_day_average_price": intervals[2].get("average_price", 0) if len(intervals) > 2 else 0,
     }
     
     # 取得したデータをログに出力
     logger.info(f"OpenSea Data for {collection_slug}: {extracted_data}")
     
     return extracted_data
+
 
 def login_to_financie(session):
     # ログインページにアクセスして必要なトークンを取得
@@ -98,8 +191,8 @@ def login_to_financie(session):
     csrf_token = soup.find('input', {'name': 'authenticity_token'})['value']
 
     login_payload = {
-        'username': FINANCIE_USERNAME,
-        'password': FINANCIE_PASSWORD,
+        'username': os.getenv('FINANCIE_USERNAME'),
+        'password': os.getenv('FINANCIE_PASSWORD'),
         'authenticity_token': csrf_token
     }
 
@@ -145,7 +238,8 @@ def scrape_all_data():
             url_suffix = collection['url_suffix']
             url = f"{base_url}{url_suffix}"
             if platform == 'magiceden':
-                all_data[name] = scrape_magiceden(url)
+                is_polygon = 'polygon' in url
+                all_data[name] = scrape_magiceden(url, is_polygon)
             elif platform == 'opensea':
                 # OpenSea APIを使用する
                 all_data[name] = get_opensea_collection_stats(url_suffix)
