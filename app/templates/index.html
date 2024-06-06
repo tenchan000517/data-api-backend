@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data API Test</title>
+    <script>
+        async function testEndpoint() {
+            const response = await fetch('/scrape');
+            if (response.ok) {
+                const data = await response.json();
+                document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+            } else {
+                document.getElementById('result').textContent = 'Error: ' + response.statusText;
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>Data API Test</h1>
+    <button onclick="testEndpoint()">Test /scrape Endpoint</button>
+    <pre id="result"></pre>
+</body>
+</html>
