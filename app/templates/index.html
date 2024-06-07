@@ -3,179 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Data API Test</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: row;
-        }
-        .container {
-            flex: 1;
-            padding: 20px;
-        }
-        h1 {
-            color: #333;
-        }
-        label {
-            font-weight: bold;
-            display: block;
-            margin-top: 10px;
-        }
-        input, select, button {
-            width: 100%;
-            padding: 10px;
-            margin-top: 5px;
-            margin-bottom: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-        button {
-            background-color: #28a745;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #218838;
-        }
-        pre {
-            background-color: #fff;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            overflow-x: auto;
-        }
-    </style>
+    <title>API Test</title>
     <script>
-        async function testEndpoint() {
-            const marketplace = document.getElementById('marketplace').value;
-            const collection = document.getElementById('collection').value;
-            const urlSuffix = document.getElementById('urlSuffix').value;
+        function toggleFields() {
+            const type = document.getElementById('type').value;
+            const fields = document.querySelectorAll('.field');
+            fields.forEach(field => field.style.display = 'none');
 
-            let query = `marketplace=${marketplace}`;
-            if (collection) {
-                query += `&collection=${collection}`;
-            }
-            if (urlSuffix) {
-                query += `&urlSuffix=${urlSuffix}`;
-            }
-
-            const response = await fetch(`/scrape?${query}`);
-            if (response.ok) {
-                const data = await response.json();
-                document.getElementById('result').textContent = JSON.stringify(data, null, 2);
-            } else {
-                document.getElementById('result').textContent = 'Error: ' + response.statusText;
+            if (type === 'nft' || type === 'erc20') {
+                document.getElementById('chainField').style.display = 'block';
+                document.getElementById('contractAddressField').style.display = 'block';
+            } else if (type === 'ordinals') {
+                document.getElementById('windowField').style.display = 'block';
+                document.getElementById('sortField').style.display = 'block';
+                document.getElementById('directionField').style.display = 'block';
+                document.getElementById('offsetField').style.display = 'block';
+                document.getElementById('limitField').style.display = 'block';
+                document.getElementById('sort').value = 'volume';
+                document.getElementById('limit').value = 100;
+            } else if (type === 'collections') {
+                document.getElementById('chainField').style.display = 'block';
+                document.getElementById('collectionSlugField').style.display = 'block';
+                document.getElementById('sortField').style.display = 'block';
+                document.getElementById('limitField').style.display = 'block';
+                document.getElementById('sort').value = 'allTimeVolume';
+                document.getElementById('limit').value = 20;
+            } else if (type === 'pair') {
+                document.getElementById('contractAddressField').style.display = 'block';
+                document.getElementById('symbolField').style.display = 'block';
+            } else if (type === 'brc20' || type === 'solana') {
+                document.getElementById('symbolField').style.display = 'block';
+                document.getElementById('offsetField').style.display = 'block';
+                document.getElementById('limitField').style.display = 'block';
             }
         }
 
-        async function testTokenEndpoint() {
+        async function fetchData() {
             const chain = document.getElementById('chain').value;
             const contractAddress = document.getElementById('contractAddress').value;
-            const source = document.getElementById('source').value;
+            const type = document.getElementById('type').value;
+            const symbol = document.getElementById('symbol').value;
+            const collectionSlug = document.getElementById('collectionSlug').value;
+            const windowValue = document.getElementById('window').value;
+            const sort = document.getElementById('sort').value;
+            const direction = document.getElementById('direction').value;
+            const offset = document.getElementById('offset').value;
+            const limit = document.getElementById('limit').value;
 
-            let query = `chain=${chain}&contractAddress=${contractAddress}&source=${source}`;
+            let url = new URL('/info', window.location.origin);
+            const params = { type };
 
-            const response = await fetch(`/token?${query}`);
-            if (response.ok) {
-                const data = await response.json();
-                document.getElementById('tokenResult').textContent = JSON.stringify(data, null, 2);
-            } else {
-                document.getElementById('tokenResult').textContent = 'Error: ' + response.statusText;
+            if (type === 'nft' || type === 'erc20') {
+                params.chain = chain;
+                params.contractAddress = contractAddress;
+            } else if (type === 'ordinals') {
+                params.window = windowValue;
+                params.sort = sort;
+                params.direction = direction;
+                params.offset = offset;
+                params.limit = limit;
+            } else if (type === 'collections') {
+                params.chain = chain;
+                params.collectionSlug = collectionSlug;
+                params.sort = sort;
+                params.limit = limit;
+            } else if (type === 'pair') {
+                params.contractAddress = contractAddress;
+                params.symbol = symbol;
+            } else if (type === 'brc20' || type === 'solana') {
+                params.symbol = symbol;
+                params.offset = offset;
+                params.limit = limit;
             }
-        }
 
-        async function testPairEndpoint() {
-            const customToken = document.getElementById('customToken').value;
-            const token = document.getElementById('token').value;
+            Object.keys(params).forEach(key => {
+                if (params[key]) url.searchParams.append(key, params[key]);
+            });
 
-            let query = `token0=${customToken}&token1=${token}`;
-
-            const response = await fetch(`/pair?${query}`);
-            if (response.ok) {
+            try {
+                const response = await fetch(url);
                 const data = await response.json();
-                document.getElementById('pairResult').textContent = JSON.stringify(data, null, 2);
-            } else {
-                document.getElementById('pairResult').textContent = 'Error: ' + response.statusText;
-            }
-        }
-
-        function toggleInputs() {
-            const marketplace = document.getElementById('marketplace').value;
-            const collectionInput = document.getElementById('collection');
-            const urlSuffixInput = document.getElementById('urlSuffix');
-
-            if (marketplace === 'Ethereum' || marketplace === 'Polygon') {
-                collectionInput.disabled = true;
-                urlSuffixInput.disabled = false;
-            } else {
-                collectionInput.disabled = false;
-                urlSuffixInput.disabled = true;
+                document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('result').textContent = 'Error: ' + error.message;
             }
         }
     </script>
 </head>
-<body>
-    <div class="container">
-        <h1>Data API Test</h1>
-        <label for="marketplace">Marketplace:</label>
-        <select id="marketplace" name="marketplace" onchange="toggleInputs()">
-            <option value="MagicEdenAPI">MagicEden (API)</option>
-            <option value="MagicEdenOrdinals">MagicEden Ordinals (API)</option>
-            <option value="MagicEdenScrape">MagicEden (Scrape)</option>
-            <option value="Opensea">Opensea</option>
-            <option value="Ethereum">MagicEden (Ethereum)</option>
-            <option value="Polygon">MagicEden (Polygon)</option>
-        </select>
-        <label for="collection">Collection:</label>
-        <input type="text" id="collection" name="collection" placeholder="Enter Collection Identifier">
-        <label for="urlSuffix">URL Suffix:</label>
-        <input type="text" id="urlSuffix" name="urlSuffix" placeholder="Enter URL Suffix" disabled>
-        <button onclick="testEndpoint()">Test /scrape Endpoint</button>
+<body onload="toggleFields()">
+    <h1>API Test</h1>
+    <form onsubmit="event.preventDefault(); fetchData();">
+        <label for="type">Type:</label>
+        <select id="type" name="type" onchange="toggleFields()">
+            <option value="nft">NFT</option>
+            <option value="erc20">ERC20</option>
+            <option value="ordinals">Ordinals</option>
+            <option value="brc20">BRC20</option>
+            <option value="solana">Solana</option>
+            <option value="collections">Collections</option>
+            <option value="pair">Token Pair</option>
+        </select><br><br>
 
-        <h1>Token API Test</h1>
-        <label for="chain">Chain:</label>
-        <select id="chain" name="chain">
-            <option value="ethereum">Ethereum</option>
-            <option value="polygon">Polygon</option>
-            <option value="binance">Binance</option>
-            <option value="base">BASE</option>
-            <option value="aster">Aster</option>
-            <option value="astergkevm">AsterGKEvm</option>
-        </select>
-        <label for="contractAddress">Contract Address:</label>
-        <input type="text" id="contractAddress" name="contractAddress" placeholder="Enter Contract Address">
-        <label for="source">Source:</label>
-        <select id="source" name="source">
-            <option value="default">Default</option>
-            <option value="uniswap">Uniswap</option>
-            <option value="pancakeswap">PancakeSwap</option>
-        </select>
-        <button onclick="testTokenEndpoint()">Test /token Endpoint</button>
+        <div id="chainField" class="field">
+            <label for="chain">Chain:</label>
+            <select id="chain" name="chain">
+                <option value="ethereum">Ethereum</option>
+                <option value="polygon">Polygon</option>
+                <option value="solana">Solana</option>
+                <option value="bitcoin">Bitcoin</option>
+                <option value="binance">Binance</option>
+                <option value="base">Base</option>
+                <option value="aster">Aster</option>
+                <option value="astergkevm">AsterGKEVM</option>
+            </select><br><br>
+        </div>
 
-        <h1>Pair API Test</h1>
-        <label for="customToken">Custom Token Address:</label>
-        <input type="text" id="customToken" name="customToken" placeholder="Enter Custom Token Address">
-        <label for="token">Pair with:</label>
-        <select id="token" name="token">
-            <option value="0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2">ETH</option>
-            <option value="0xdAC17F958D2ee523a2206206994597C13D831ec7">USDT</option>
-            <option value="0xA0b86991c6218B36c1d19D4a2e9Eb0cE3606eB48">USDC</option>
-            <option value="0x6B175474E89094C44Da98b954EedeAC495271d0F">DAI</option>
-            <option value="0x514910771AF9Ca656af840dff83E8264EcF986CA">LINK</option>
-            <!-- 他の主要トークンもここに追加できます -->
-        </select>
-        <button onclick="testPairEndpoint()">Test /pair Endpoint</button>
-    </div>
-    <div class="container">
-        <h1>Results</h1>
-        <pre id="result"></pre>
-        <pre id="tokenResult"></pre>
-        <pre id="pairResult"></pre>
-    </div>
+        <div id="contractAddressField" class="field">
+            <label for="contractAddress">Contract Address:</label>
+            <input type="text" id="contractAddress" name="contractAddress"><br><br>
+        </div>
+
+        <div id="symbolField" class="field">
+            <label for="symbol">Symbol:</label>
+            <input type="text" id="symbol" name="symbol"><br><br>
+        </div>
+
+        <div id="collectionSlugField" class="field">
+            <label for="collectionSlug">Collection Slug:</label>
+            <input type="text" id="collectionSlug" name="collectionSlug"><br><br>
+        </div>
+
+        <div id="windowField" class="field">
+            <label for="window">Window:</label>
+            <input type="text" id="window" name="window" value="1d"><br><br>
+        </div>
+
+        <div id="sortField" class="field">
+            <label for="sort">Sort:</label>
+            <input type="text" id="sort" name="sort" value="allTimeVolume"><br><br>
+        </div>
+
+        <div id="directionField" class="field">
+            <label for="direction">Direction:</label>
+            <input type="text" id="direction" name="direction" value="desc"><br><br>
+        </div>
+
+        <div id="offsetField" class="field">
+            <label for="offset">Offset:</label>
+            <input type="number" id="offset" name="offset" value="0"><br><br>
+        </div>
+
+        <div id="limitField" class="field">
+            <label for="limit">Limit:</label>
+            <input type="number" id="limit" name="limit" value="20"><br><br>
+        </div>
+
+        <input type="submit" value="Fetch Data">
+    </form>
+    <h2>Result:</h2>
+    <pre id="result"></pre>
 </body>
 </html>
