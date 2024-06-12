@@ -4,8 +4,13 @@ from .token_info import get_token_info, get_uniswap_pair_data
 from .ordinals_info import get_ordinals_collection_stats
 from .brc20_info import get_brc20_info, get_brc20_token_id
 from .collections_info import get_collection_stats
-from .solana_info import get_collections  # 新しいモジュールをインポート
+from .solana_info import get_collections
+from .crypto_ranking import get_crypto_ranking
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
 import logging
+import os
+import json
 
 main = Blueprint('main', __name__)
 
@@ -20,7 +25,7 @@ def index():
 def get_info():
     contract_address = request.args.get('contractAddress')
     chain = request.args.get('chain')
-    data_type = request.args.get('type')  # 'nft', 'erc20', 'ordinals', 'brc20', 'solana', 'collections'
+    data_type = request.args.get('type')
     symbol = request.args.get('symbol')
     collection_slug = request.args.get('collectionSlug')
     window = request.args.get('window', '1d')
@@ -69,3 +74,36 @@ def get_pair():
     data = get_uniswap_pair_data(token0_address, token1_address)
     
     return jsonify(data), 200
+
+@main.route('/crypto-rankings', methods=['GET'])
+def crypto_rankings():
+    data = get_crypto_ranking()
+    return jsonify(data), 200
+
+@main.route('/api/googleSheets', methods=['POST'])
+def google_sheets():
+    data = request.json
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    spreadsheet_id = os.getenv('REACT_APP_SPREADSHEET_ID')
+    service_account_info = json.loads(os.getenv('REACT_APP_SERVICE_ACCOUNT_INFO'))
+
+    creds = service_account.Credentials.from_service_account_info(service_account_info)
+    service = build('sheets', 'v4', credentials=creds)
+    sheet = service.spreadsheets()
+
+    body = {
+        'values': data['values']
+    }
+
+    try:
+        result = sheet.values().append(
+            spreadsheetId=spreadsheet_id,
+            range='Sheet1!A1',
+            valueInputOption='RAW',
+            body=body
+        ).execute()
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

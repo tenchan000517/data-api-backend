@@ -14,3 +14,4 @@ gunicorn
 python-dotenv
 beautifulsoup4
 flask-cors
+google-auth
