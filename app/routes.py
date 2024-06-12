@@ -90,7 +90,7 @@ def google_sheets():
     requests = data['requests']
 
     try:
-        service_account_info = json.loads(os.getenv('REACT_APP_SERVICE_ACCOUNT_INFO'))
+        service_account_info = json.loads(os.getenv('REACT_APP_SERVICE_ACCOUNT_INFO2'))
     except Exception as e:
         return jsonify({"error": f"Invalid service account info: {str(e)}"}), 500
 
