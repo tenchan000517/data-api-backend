@@ -80,13 +80,6 @@ def crypto_rankings():
     data = get_crypto_ranking()
     return jsonify(data), 200
 
-from flask import Blueprint, request, jsonify
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
-import os
-import json
-
-main = Blueprint('main', __name__)
 
 @main.route('/api/googleSheets', methods=['POST'])
 def google_sheets():
@@ -96,7 +89,11 @@ def google_sheets():
 
     requests = data['requests']
 
-    service_account_info = json.loads(os.getenv('REACT_APP_SERVICE_ACCOUNT_INFO'))
+    try:
+        service_account_info = json.loads(os.getenv('REACT_APP_SERVICE_ACCOUNT_INFO'))
+    except Exception as e:
+        return jsonify({"error": f"Invalid service account info: {str(e)}"}), 500
+
     creds = service_account.Credentials.from_service_account_info(service_account_info)
     service = build('sheets', 'v4', credentials=creds)
     sheet = service.spreadsheets()
