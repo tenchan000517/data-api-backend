@@ -80,30 +80,54 @@ def crypto_rankings():
     data = get_crypto_ranking()
     return jsonify(data), 200
 
+from flask import Blueprint, request, jsonify
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+import os
+import json
+
+main = Blueprint('main', __name__)
+
 @main.route('/api/googleSheets', methods=['POST'])
 def google_sheets():
     data = request.json
-    if not data:
+    if not data or 'requests' not in data:
         return jsonify({"error": "No data provided"}), 400
 
-    spreadsheet_id = os.getenv('REACT_APP_SPREADSHEET_ID')
-    service_account_info = json.loads(os.getenv('REACT_APP_SERVICE_ACCOUNT_INFO'))
+    requests = data['requests']
 
+    service_account_info = json.loads(os.getenv('REACT_APP_SERVICE_ACCOUNT_INFO'))
     creds = service_account.Credentials.from_service_account_info(service_account_info)
     service = build('sheets', 'v4', credentials=creds)
     sheet = service.spreadsheets()
 
-    body = {
-        'values': data['values']
-    }
+    responses = []
+    for request_data in requests:
+        spreadsheet_id = request_data.get('spreadsheetId')
+        sheet_name = request_data.get('sheetName', 'Sheet1')
+        range_name = request_data.get('range', 'A1')
+        values = request_data.get('values')
 
-    try:
-        result = sheet.values().append(
-            spreadsheetId=spreadsheet_id,
-            range='Sheet1!A1',
-            valueInputOption='RAW',
-            body=body
-        ).execute()
-        return jsonify(result), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        if not spreadsheet_id:
+            responses.append({"error": "No spreadsheetId provided", "status": 400})
+            continue
+        if not values:
+            responses.append({"error": "No values provided", "status": 400})
+            continue
+
+        body = {
+            'values': values
+        }
+
+        try:
+            result = sheet.values().append(
+                spreadsheetId=spreadsheet_id,
+                range=f'{sheet_name}!{range_name}',
+                valueInputOption='RAW',
+                body=body
+            ).execute()
+            responses.append({"result": result, "status": 200})
+        except Exception as e:
+            responses.append({"error": str(e), "status": 500})
+
+    return jsonify(responses), 200
