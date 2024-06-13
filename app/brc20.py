@@ -35,8 +35,8 @@ def get_brc20_balances(bitcoin_address):
         logger.error(f"Failed to fetch BRC-20 balances: {response.status_code} {response.text}")
         return {"error": "Failed to fetch BRC-20 balances"}
 
-def get_brc20_market_info(tick):
-    url = f"https://api.ordiscan.com/v1/brc20/{tick}/market"
+def get_rune_market_info(name):
+    url = f"https://api.ordiscan.com/v1/rune/{name}/market"
     headers = {
         "Authorization": f"Bearer {ORDISCAN_API_KEY}"
     }
@@ -45,8 +45,8 @@ def get_brc20_market_info(tick):
     if response.status_code == 200:
         return response.json()['data']
     else:
-        logger.error(f"Failed to fetch BRC-20 market info: {response.status_code} {response.text}")
-        return {"error": "Failed to fetch BRC-20 market info"}
+        logger.error(f"Failed to fetch Rune market info: {response.status_code} {response.text}")
+        return {"error": "Failed to fetch Rune market info"}
 
 def get_brc20_transfer_activity(inscription_id):
     url = f"https://api.ordiscan.com/v1/inscription/{inscription_id}/activity"

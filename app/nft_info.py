@@ -72,42 +72,43 @@ def scrape_magiceden(contract_address, chain):
         logger.error("Script tag with id '__NEXT_DATA__' not found")
         return None
 
-def get_nft_info(chain, contract_address, symbol, collection_slug):
-    data_opensea = get_opensea_collection_stats(collection_slug)
-    data_magiceden = scrape_magiceden(contract_address, chain)
+# def get_nft_info(chain, contract_address, symbol, collection_slug):
+#     data_opensea = get_opensea_collection_stats(collection_slug)
+#     data_magiceden = scrape_magiceden(contract_address, chain)
 
-    # データを統合する
-    combined_data = {}
-    if data_opensea:
-        combined_data.update(data_opensea)
-    if data_magiceden:
-        combined_data.update(data_magiceden)
+#     # データを統合する
+#     combined_data = {}
+#     if data_opensea:
+#         combined_data.update(data_opensea)
+#     if data_magiceden:
+#         combined_data.update(data_magiceden)
 
-    return combined_data
-def get_magiceden_collection_stats(symbol):
-    url = f"https://api-mainnet.magiceden.dev/v2/collections/{symbol}/stats"
-    logger.info(f"Fetching collection stats from MagicEden API URL: {url}")
-    response = requests.get(url)
-    
-    if response.status_code != 200:
-        logger.error(f"Failed to fetch collection stats from MagicEden API: {response.status_code} {response.text}")
-        return None
-    
-    data = response.json()
-    logger.debug(f"Collection stats: {json.dumps(data, indent=2)}")  # 全体の内容を出力
-    
-    extracted_data = {
-        "symbol": data.get("symbol", ""),
-        "listedCount": data.get("listedCount", 0),
-        "floorPrice": data.get("floorPrice", 0),
-        "volumeAll": data.get("volumeAll", 0),
-        "avgPrice24hr": data.get("avgPrice24hr", 0),
-        "volume24hr": data.get("volume24hr", 0)
+#     return combined_data
+
+def get_magiceden_collection_stats(chain, collection_slug, sortBy='allTimeVolume', limit=20):
+    url = f"https://api-mainnet.magiceden.dev/v3/rtp/{chain}/collections/v7"
+    params = {
+        'slug': collection_slug,
+        'includeMintStages': 'false',
+        'includeSecurityConfigs': 'false',
+        'normalizeRoyalties': 'false',
+        'useNonFlaggedFloorAsk': 'false',
+        'sortBy': sortBy,
+        'limit': limit
     }
     
-    logger.info(f"MagicEden Data for {symbol}: {extracted_data}")
+    headers = {
+        'Authorization': f"Bearer {os.getenv('MAGICEDEN_API_KEY')}",
+        'accept': '*/*'
+    }
     
-    return extracted_data
+    response = requests.get(url, headers=headers, params=params)
+    
+    if response.status_code == 200:
+        return response.json()
+    else:
+        logger.error(f"Failed to fetch collection stats: {response.status_code} {response.text}")
+        return {"error": f"Failed to fetch collection stats: {response.status_code}"}
 
 def get_opensea_collection_stats(collection_slug):
     url = f"https://api.opensea.io/api/v2/collections/{collection_slug}/stats"
@@ -159,19 +160,27 @@ def get_nft_info(chain, contract_address, symbol=None, collection_slug=None):
     data = {}
     if chain == 'ethereum':
         if collection_slug:
+            data_magiceden = get_magiceden_collection_stats(collection_slug)
+            if data_magiceden:
+                data.update(data_magiceden)
             data_opensea = get_opensea_collection_stats(collection_slug)
             if data_opensea:
                 data.update(data_opensea)
-        data_magiceden = scrape_magiceden(contract_address, chain="ethereum")
+        if not data:
+            data_magiceden_scraped = scrape_magiceden(contract_address, chain="ethereum")
+            if data_magiceden_scraped:
+                data.update(data_magiceden_scraped)
+    elif chain == 'polygon':
+        data_magiceden = get_magiceden_collection_stats(collection_slug)
         if data_magiceden:
             data.update(data_magiceden)
-    elif chain == 'polygon':
         data_opensea = get_opensea_collection_stats(collection_slug)
-        data_magiceden = scrape_magiceden(contract_address, chain="polygon")
         if data_opensea:
             data.update(data_opensea)
-        if data_magiceden:
-            data.update(data_magiceden)
+        if not data:
+            data_magiceden_scraped = scrape_magiceden(contract_address, chain="polygon")
+            if data_magiceden_scraped:
+                data.update(data_magiceden_scraped)
     elif chain == 'solana':
         data = get_magiceden_collection_stats(symbol)
     return data

@@ -15,3 +15,5 @@ python-dotenv
 beautifulsoup4
 flask-cors
 google-auth
+apscheduler
+requests

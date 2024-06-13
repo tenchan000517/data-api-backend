@@ -17,6 +17,7 @@
                 document.getElementById('windowField').style.display = 'block';
                 document.getElementById('sortField').style.display = 'block';
                 document.getElementById('directionField').style.display = 'block';
+                document.getElementId('collectionSlugField').style.display = 'block';
                 document.getElementById('offsetField').style.display = 'block';
                 document.getElementById('limitField').style.display = 'block';
                 document.getElementById('sort').value = 'volume';
@@ -60,6 +61,7 @@
                 params.window = windowValue;
                 params.sort = sort;
                 params.direction = direction;
+                params.collectionSlug = collectionSlug;
                 params.offset = offset;
                 params.limit = limit;
             } else if (type === 'collections') {
@@ -86,6 +88,18 @@
                 document.getElementById('result').textContent = JSON.stringify(data, null, 2);
             } catch (error) {
                 document.getElementById('result').textContent = 'Error: ' + error.message;
+            }
+        }
+
+        async function manualSchedulerTrigger() {
+            try {
+                const response = await fetch('/api/triggerScheduler', {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                alert('Scheduler triggered: ' + JSON.stringify(result));
+            } catch (error) {
+                alert('Error: ' + error.message);
             }
         }
     </script>
@@ -162,5 +176,33 @@
     </form>
     <h2>Result:</h2>
     <pre id="result"></pre>
+
+    <button onclick="manualSchedulerTrigger()">Trigger Scheduler</button>
+    <button id="fetch-data">Fetch and Save Data</button>
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('fetch-data').addEventListener('click', () => {
+            fetch('/api/triggerScheduler', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const resultDiv = document.getElementById('result');
+                if (data.error) {
+                    resultDiv.innerHTML = `<p>Error: ${data.error}</p>`;
+                } else {
+                    resultDiv.innerHTML = `<p>Scheduler triggered successfully. Check Google Sheets for data.</p>`;
+                }
+            })
+            .catch(error => {
+                const resultDiv = document.getElementById('result');
+                resultDiv.innerHTML = `<p>Error: ${error.message}</p>`;
+            });
+        });
+    </script>
 </body>
 </html>

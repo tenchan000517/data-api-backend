@@ -19,7 +19,7 @@ def get_ordinals_collection_stats(window, sort, direction, offset, limit):
     
     if response.status_code == 200:
         data = response.json()
-        logger.debug(f"Ordinals stats: {json.dumps(data, indent=2)}")  # 全体の内容を出力
+        # logger.debug(f"Ordinals stats: {json.dumps(data, indent=2)}")  # 全体の内容を出力
         return data
     else:
         logger.error(f"Failed to fetch Ordinals stats from MagicEden API: {response.status_code} {response.text}")
