@@ -6,7 +6,7 @@ from .brc20_info import get_brc20_info, get_brc20_token_id
 from .collections_info import get_collection_stats
 from .solana_info import get_collections
 from .crypto_ranking import get_crypto_ranking
-
+from .google_sheets import get_sheet_values
 from .scheduler import fetch_and_save_data, start_scheduler
 
 import logging
@@ -97,60 +97,26 @@ def start_scheduler_route():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# @main.route('/api/googleSheets', methods=['POST'])
-# def google_sheets():
-#     data = request.json
-#     if not data or 'requests' not in data:
-#         return jsonify({"error": "No data provided"}), 400
+@main.route('/api/data', methods=['GET'])
+def get_data():
+    sheet_id = '1B4X_by7BD2ROPsXHNmgTsCyIultzcy1425JNKEYvbNk'
+    sheet_name = request.args.get('type')
+    date = request.args.get('date')
 
-#     requests = data['requests']
+    if not sheet_name or not date:
+        return jsonify({'error': 'Invalid parameters'}), 400
 
-#     try:
-#         service_account_info = json.loads(os.getenv('REACT_APP_SERVICE_ACCOUNT_INFO2'))
-#     except Exception as e:
-#         return jsonify({"error": f"Invalid service account info: {str(e)}"}), 500
+    range_name = f'{sheet_name}!A1:Z'
+    values = get_sheet_values(sheet_id, range_name)
 
-#     creds = service_account.Credentials.from_service_account_info(service_account_info)
-#     service = build('sheets', 'v4', credentials=creds)
-#     sheet = service.spreadsheets()
+    if not values:
+        return jsonify([])
 
-#     responses = []
-#     for request_data in requests:
-#         spreadsheet_id = request_data.get('spreadsheetId')
-#         sheet_name = request_data.get('sheetName', 'Sheet1')
-#         range_name = request_data.get('range', 'A1')
-#         values = request_data.get('values')
+    headers = values[0]
+    data = []
+    for row in values[1:]:
+        if row[0].startswith(date):
+            item = {headers[i]: row[i] for i in range(len(headers))}
+            data.append(item)
 
-#         if not spreadsheet_id:
-#             responses.append({"error": "No spreadsheetId provided", "status": 400})
-#             continue
-#         if not values:
-#             responses.append({"error": "No values provided", "status": 400})
-#             continue
-
-#         body = {
-#             'values': values
-#         }
-
-#         try:
-#             result = sheet.values().append(
-#                 spreadsheetId=spreadsheet_id,
-#                 range=f'{sheet_name}!{range_name}',
-#                 valueInputOption='RAW',
-#                 body=body
-#             ).execute()
-#             responses.append({"result": result, "status": 200})
-#         except Exception as e:
-#             responses.append({"error": str(e), "status": 500})
-
-#     return jsonify(responses), 200
-
-# @main.route('/api/triggerScheduler', methods=['POST'])
-# def trigger_scheduler():
-#     try:
-#         fetch_and_write_data('nft', 'ethereum', 'contract_address', None, 'collection_slug')
-#         fetch_and_write_data('ordinals', '1d', 'volume', 'desc', 0, 100)
-#         fetch_and_write_data('brc20', 'symbol')
-#         return jsonify({"status": "Scheduler triggered successfully"}), 200
-#     except Exception as e:
-#         return jsonify({"error": str(e)}), 500
+    return jsonify(data)
