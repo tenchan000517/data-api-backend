@@ -103,20 +103,31 @@ def get_data():
     sheet_name = request.args.get('type')
     date = request.args.get('date')
 
+    logger.debug(f"Received request with sheet_name: {sheet_name}, date: {date}")
+
     if not sheet_name or not date:
+        logger.error("Invalid parameters")
         return jsonify({'error': 'Invalid parameters'}), 400
 
     range_name = f'{sheet_name}!A1:Z'
     values = get_sheet_values(sheet_id, range_name)
 
+    logger.debug(f"Values fetched from sheet: {values}")
+
     if not values:
+        logger.debug("No values found in sheet")
         return jsonify([])
 
     headers = values[0]
+    logger.debug(f"Headers: {headers}")
+
     data = []
     for row in values[1:]:
         if row[0].startswith(date):
             item = {headers[i]: row[i] for i in range(len(headers))}
             data.append(item)
 
+    logger.debug(f"Filtered data: {data}")
+
     return jsonify(data)
+
